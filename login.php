@@ -56,7 +56,7 @@
 
 <body>
     <div class="login-box">
-        <h2>Clerk Login</h2>
+        <h2>Login</h2>
         <form method="POST">
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password" required>
