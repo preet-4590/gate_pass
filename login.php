@@ -66,13 +66,23 @@
 
     <?php
     if (isset($_POST['login'])) {
-        $user = $_POST['username'];
-        $pass = $_POST['password'];
+        $user = mysqli_real_escape_string($conn, $_POST['username']);
+        $pass = mysqli_real_escape_string($conn, $_POST['password']);
+
+        // Query now fetches the role column as well
         $res = mysqli_query($conn, "SELECT * FROM clerks WHERE username='$user' AND password='$pass'");
+
         if ($row = mysqli_fetch_assoc($res)) {
             $_SESSION['clerk_user'] = $row['username'];
-            $_SESSION['clerk_inst'] = $row['institution'];
-            header("Location: dashboard.php");
+            $_SESSION['role'] = $row['role']; // Store the role in session[cite: 6]
+    
+            if ($row['role'] == 'super_admin') {
+                header("Location: admin_dashboard.php");
+            } else {
+                $_SESSION['clerk_inst'] = $row['institution'];
+                header("Location: dashboard.php");
+            }
+            exit;
         } else {
             echo "<script>alert('Invalid Credentials');</script>";
         }
