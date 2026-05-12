@@ -30,7 +30,8 @@ if (isset($_POST['save'])) {
     if (mysqli_query($conn, $sql)) {
         // 4. Generate QR Code linking to your Scan Handler
         // Using $site_url from db_config.php
-        $profile_url = $site_url . "/scan_handler.php?id=" . urlencode($u_id);
+// Link directly to the result page that handles the In/Out logic
+        $profile_url = $site_url . "/guard_scan_result.php?id=" . urlencode($u_id);
 
         // Ensure the qrcodes folder exists before saving
         if (!file_exists('uploads/qrcodes')) {
