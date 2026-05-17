@@ -132,6 +132,12 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev"; // Update as need
             font-weight: 600;
         }
 
+        .log-btn {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
         .inst-badge {
             background: #e1e8ed;
             padding: 4px 8px;
@@ -173,7 +179,7 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev"; // Update as need
             <form class="search-form" method="GET">
                 <input type="text" name="search" class="search-input" placeholder="Search across all institutions..."
                     value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>">
-                <button type="submit" class="btn-search">Search</button>
+                <button type="submit" class="btn-search">Search Records</button>
             </form>
         </div>
 
@@ -186,13 +192,14 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev"; // Update as need
                     <th>Roll No</th>
                     <th>QR</th>
                     <th>Action</th>
+                    <th>Logs</th>
                 </tr>
             </thead>
             <tbody>
                 <?php
                 $search = mysqli_real_escape_string($conn, $_GET['search'] ?? '');
 
-                // Super Admin query: pulls from ALL institutions[cite: 2, 8]
+                // Super Admin query: pulls from ALL institutions
                 $query = "SELECT * FROM students";
                 if (!empty($search)) {
                     $query .= " WHERE (name LIKE '%$search%' OR roll_no LIKE '%$search%' OR unique_id LIKE '%$search%' OR institution LIKE '%$search%')";
@@ -204,21 +211,34 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev"; // Update as need
                 if (mysqli_num_rows($result) > 0) {
                     while ($row = mysqli_fetch_assoc($result)) {
                         $encoded_id = urlencode($row['unique_id']);
-                        $qr_path = $row['qr_path']; // Using local QR path[cite: 2]
-                
+
+                        // Clean paths for rendering string context inside the echo block safely
+                        $clean_qr_path = htmlspecialchars($row['qr_path']);
+                        $clean_name = htmlspecialchars($row['name']);
+                        $clean_roll = htmlspecialchars($row['roll_no']);
+                        $clean_inst = htmlspecialchars($row['institution']);
+                        $clean_uid = htmlspecialchars($row['unique_id']);
+
                         echo "<tr>
-                            <td><span class='inst-badge'>{$row['institution']}</span></td>
-                            <td><strong>{$row['unique_id']}</strong></td>
-                            <td>{$row['name']}</td>
-                            <td>{$row['roll_no']}</td>
-                            <td><img src='{$qr_path}' class='qr-thumb' alt='QR'></td>
-                            <td>
-                                <a href='view_profile.php?id={$encoded_id}' class='view-link'>View Details</a>
-                            </td>
-                        </tr>";
+                <td><span class='inst-badge'>{$clean_inst}</span></td>
+                <td><strong>{$clean_uid}</strong></td>
+                <td>{$clean_name}</td>
+                <td>{$clean_roll}</td>
+                <td>
+                    <a href='{$clean_qr_path}' target='_blank'>
+                        <img src='{$clean_qr_path}' alt='QR Code' class='qr-thumb' style='width: 50px; height: 50px; cursor: pointer;'>
+                    </a>
+                </td>
+                <td>
+                    <a href='view_profile.php?id={$encoded_id}' class='view-link'>View Details</a>
+                </td>
+                <td>
+                    <a href='attendance_dashboard.php?search={$encoded_id}' class='log-btn'>Status</a>
+                </td>
+            </tr>";
                     }
                 } else {
-                    echo "<tr><td colspan='6' style='text-align:center; padding: 40px;'>No student records found.</td></tr>";
+                    echo "<tr><td colspan='7' style='text-align:center; padding: 40px;'>No student records found.</td></tr>";
                 }
                 ?>
             </tbody>
