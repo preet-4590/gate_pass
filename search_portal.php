@@ -55,6 +55,38 @@ $inst = $_SESSION['clerk_inst'];
         .view-btn:hover {
             background: #2980b9;
         }
+
+        .action-links {
+            display: flex;
+            gap: 10px;
+        }
+
+        .view-btn {
+            background: #3498db;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .log-btn {
+            background: #3498db;
+            /* Green color for logs */
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .view-btn:hover {
+            background: #2980b9;
+        }
+
+        .log-btn:hover {
+            background: #3498db;
+        }
     </style>
 </head>
 
@@ -79,12 +111,15 @@ $inst = $_SESSION['clerk_inst'];
             if (mysqli_num_rows($res) > 0) {
                 while ($row = mysqli_fetch_assoc($res)) {
                     echo "<div class='result-card'>
-                            <div style='text-align:left;'>
-                                <b>{$row['name']}</b><br>
-                                <small>ID: {$row['unique_id']} | Roll: {$row['roll_no']}</small>
-                            </div>
-                            <a href='view_profile.php?id={$row['unique_id']}' class='view-btn'>View Full Details</a>
-                          </div>";
+            <div style='text-align:left;'>
+                <b>" . htmlspecialchars($row['name']) . "</b><br>
+                <small>ID: " . htmlspecialchars($row['unique_id']) . " | Roll: " . htmlspecialchars($row['roll_no']) . "</small>
+            </div>
+            <div class='action-links'>
+                <a href='view_profile.php?id=" . urlencode($row['unique_id']) . "' class='view-btn'>Profile</a>
+                <a href='guard_scan_result.php?id=" . urlencode($row['unique_id']) . "' class='log-btn'>Logs</a>
+            </div>
+          </div>";
                 }
             } else {
                 echo "<p style='margin-top:20px; color:red;'>No student found in $inst records.</p>";
