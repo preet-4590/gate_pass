@@ -1,47 +1,50 @@
 <?php
-// Include your existing config for $conn
 include('db_config.php');
 
-// 1. Check if ID is provided in the URL
-if (!isset($_GET['id'])) {
-    die("Error: No Student ID provided. Please scan the QR code again.");
+// 1. Check if ID is passed in the URL
+if (!isset($_GET['id']) || empty($_GET['id'])) {
+    die("Error: No Student ID Scanned or Entered. <a href='guard_interface.php'>Back</a>");
 }
 
-// 2. Clean the ID from the URL
-// This matches the 'unique_id' column in your database (e.g., #E1)
-$student_id = mysqli_real_escape_string($conn, $_GET['id']);
+// 2. Decode the URL text to turn '%23' back into '#'
+// This fixes the "%23E1 is not registered" bug completely!
+$raw_id = urldecode($_GET['id']);
 
-// 3. FETCH PROFILE - Changed 'id' to 'unique_id' to match your SQL structure
+// 3. Clean it up for the SQL statement to keep your database secure
+$student_id = mysqli_real_escape_string($conn, $raw_id);
+
+$gate_no = isset($_GET['gate_no']) ? mysqli_real_escape_string($conn, $_GET['gate_no']) : 'Main Gate';
+
+// 4. Fetch details using the cleaned unique_id
 $student_query = mysqli_query($conn, "SELECT name, institution FROM students WHERE unique_id = '$student_id'");
 $student = mysqli_fetch_assoc($student_query);
 
-if ($student) {
-    $name = $student['name'];
-    $inst = $student['institution'];
-
-    // 4. LOGIC TO TOGGLE DIRECTION
-    // We check the 'student_attendance' table for the last movement of this unique_id
-    $last_log_query = "SELECT direction FROM student_attendance 
-                       WHERE student_id = '$student_id' 
-                       ORDER BY log_time DESC LIMIT 1";
-
-    $last_log_res = mysqli_query($conn, $last_log_query);
-    $last_log = mysqli_fetch_assoc($last_log_res);
-
-    // Toggle: If no record exists or last was OUT, they are now coming IN
-    $direction = (!$last_log || $last_log['direction'] == 'OUT') ? 'IN' : 'OUT';
-
-    // 5. SAVE THE RECORD
-    $insert_sql = "INSERT INTO student_attendance (student_id, student_name, institution, direction, log_time) 
-                   VALUES ('$student_id', '$name', '$inst', '$direction', NOW())";
-
-    if (!mysqli_query($conn, $insert_sql)) {
-        die("Database Error: " . mysqli_error($conn));
-    }
-} else {
-    // This happens if the QR code ID doesn't exist in the 'students' table
-    die("Access Denied: Student ID ($student_id) not found in records.");
+if (!$student) {
+    die("<div style='text-align:center; padding:50px; font-family:sans-serif;'>
+            <h1 style='color:#e74c3c; font-size: 50px;'>❌ ACCESS DENIED</h1>
+            <p style='font-size:18px;'>Student ID <b>" . htmlspecialchars($student_id) . "</b> is not registered.</p>
+            <a href='guard_interface.php'>Return to Gate Control</a>
+         </div>");
 }
+
+$student_name = $student['name'];
+$institution = $student['institution'];
+
+// Calculate IN/OUT toggle direction
+$last_log_query = mysqli_query($conn, "SELECT direction FROM student_attendance WHERE student_id = '$student_id' ORDER BY log_time DESC LIMIT 1");
+$last_log = mysqli_fetch_assoc($last_log_query);
+$next_direction = ($last_log && $last_log['direction'] == 'IN') ? 'OUT' : 'IN';
+
+// Insert tracking data including GATE NO
+$insert_log = mysqli_query($conn, "INSERT INTO student_attendance (student_id, student_name, institution, direction, gate_no, log_time) 
+                                   VALUES ('$student_id', '$student_name', '$institution', '$next_direction', '$gate_no', NOW())");
+
+if (!$insert_log) {
+    die("Logging Error: " . mysqli_error($conn));
+}
+
+// Fetch history
+$history_query = mysqli_query($conn, "SELECT direction, gate_no, log_time FROM student_attendance WHERE student_id = '$student_id' ORDER BY log_time DESC LIMIT 5");
 ?>
 
 <!DOCTYPE html>
@@ -49,128 +52,137 @@ if ($student) {
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan Result</title>
+    <title>Gate Action Result</title>
     <style>
         body {
-            font-family: sans-serif;
+            font-family: 'Segoe UI', sans-serif;
+            background: #f4f7f6;
+            padding: 20px;
             text-align: center;
-            margin: 0;
-            padding: 0;
+        }
+
+        .result-card {
+            max-width: 500px;
+            margin: 40px auto;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         }
 
         .status-header {
-            padding: 40px 20px;
-            font-size: 2.5em;
-            color: white;
+            font-size: 28px;
             font-weight: bold;
-            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 8px;
         }
 
-        .IN {
-            background: #28a745;
+        .status-IN {
+            background: #d4edda;
+            color: #155724;
         }
 
-        /* Green for Entry */
-        .OUT {
-            background: #dc3545;
+        .status-OUT {
+            background: #f8d7da;
+            color: #721c24;
         }
 
-        /* Red for Exit */
         .details {
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .history {
-            padding: 20px;
+            text-align: left;
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #34495e;
         }
 
         table {
-            width: 90%;
-            margin: 10px auto;
+            width: 100%;
             border-collapse: collapse;
-            background: white;
+            margin-top: 15px;
+            text-align: left;
         }
 
         th,
         td {
-            padding: 12px;
-            border: 1px solid #ddd;
-            text-align: center;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
         }
 
-        .btn-scan {
+        th {
+            background: #34495e;
+            color: white;
+        }
+
+        .btn {
             display: inline-block;
-            margin: 30px;
-            padding: 20px 40px;
-            background: #007bff;
+            width: 100%;
+            padding: 12px;
+            background: #3498db;
             color: white;
             text-decoration: none;
             border-radius: 8px;
-            font-size: 1.2em;
             font-weight: bold;
+            margin-top: 20px;
+            box-sizing: border-box;
         }
     </style>
 </head>
 
 <body>
 
-    <div class="status-header <?php echo $direction; ?>">
-        STUDENT
-        <?php echo $direction; ?>
-    </div>
+    <div class="result-card">
+        <div class="status-header status-<?php echo $next_direction; ?>">
+            ✅ ALLOWED
+            <?php echo $next_direction; ?>
+        </div>
 
-    <div class="details">
-        <h1 style="margin:0;">
-            <?php echo htmlspecialchars($name); ?>
-        </h1>
-        <p style="font-size: 1.2em; color: #555;">
-            <strong>
-                <?php echo htmlspecialchars($inst); ?>
-            </strong><br>
-            ID:
-            <?php echo htmlspecialchars($student_id); ?>
-        </p>
-    </div>
+        <div class="details">
+            <p><b>Name:</b>
+                <?php echo htmlspecialchars($student_name); ?>
+            </p>
+            <p><b>ID:</b>
+                <?php echo htmlspecialchars($student_id); ?>
+            </p>
+            <p><b>Institution:</b>
+                <?php echo htmlspecialchars($institution); ?>
+            </p>
+            <p><b>Gate Processed:</b>
+                <?php echo htmlspecialchars($gate_no); ?>
+            </p>
+        </div>
 
-    <div class="history">
-        <h3>Recent Activity</h3>
+        <h3>Recent Activity Logs</h3>
         <table>
             <thead>
                 <tr>
-                    <th>Status</th>
-                    <th>Date & Time</th>
+                    <th>Action</th>
+                    <th>Gate</th>
+                    <th>Timestamp</th>
                 </tr>
             </thead>
             <tbody>
-                <?php
-                // Use the $student_id variable we sanitized at the top of the script
-                $log_query = "SELECT direction, log_time FROM student_attendance 
-                  WHERE student_id = '$student_id' 
-                  ORDER BY log_time DESC LIMIT 5";
-
-                $logs = mysqli_query($conn, $log_query);
-
-                if (mysqli_num_rows($logs) > 0) {
-                    while ($row = mysqli_fetch_assoc($logs)) {
-                        // Check if it's 'IN' or 'OUT' to add a little color coding (optional)
-                        $color = ($row['direction'] == 'IN') ? 'green' : 'red';
-                        echo "<tr>
-                    <td style='color:$color; font-weight:bold;'>{$row['direction']}</td>
-                    <td>" . date('d M, Y | h:i A', strtotime($row['log_time'])) . "</td>
-                  </tr>";
-                    }
-                } else {
-                    echo "<tr><td colspan='2'>No previous logs found for this student.</td></tr>";
-                }
-                ?>
+                <?php while ($row = mysqli_fetch_assoc($history_query)): ?>
+                    <tr>
+                        <td
+                            style="font-weight: bold; color: <?php echo ($row['direction'] == 'IN') ? '#2e7d32' : '#c62828'; ?>;">
+                            <?php echo $row['direction']; ?>
+                        </td>
+                        <td>
+                            <?php echo htmlspecialchars($row['gate_no']); ?>
+                        </td>
+                        <td>
+                            <?php echo date('d M Y, h:i A', strtotime($row['log_time'])); ?>
+                        </td>
+                    </tr>
+                <?php endwhile; ?>
             </tbody>
         </table>
-    </div>
 
-    <a href="guard_scanner.php" class="btn-scan">SCAN NEXT STUDENT</a>
+        <a href="guard_interface.php" class="btn">Return to Gate Control</a>
+    </div>
 
 </body>
 
