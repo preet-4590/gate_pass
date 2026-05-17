@@ -1,6 +1,6 @@
 <?php
 $conn = mysqli_connect("localhost", "root", "", "gate_pass");
-$site_url = "https://glandular-barcode-kitten.ngrok-free.dev";
+$site_url = "https://glandular-barcode-kitten.ngrok-free.dev/gate_pass";
 
 if (!$conn) {
     die("Connection failed: " . mysqli_connect_error());
