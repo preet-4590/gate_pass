@@ -143,11 +143,21 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev";
             font-weight: 600;
         }
 
-        .delete-link {
-            color: var(--danger);
+        .log-btn {
+            color: var(--accent);
             text-decoration: none;
             font-weight: 600;
-            margin-left: 10px;
+        }
+
+        .delete-btn {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .view-btn:hover {
+            opacity: 0.9;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
 
         .qr-thumb {
@@ -201,6 +211,8 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev";
                     <th>Course</th>
                     <th>QR Code</th>
                     <th>Action</th>
+                    <th>Logs</th>
+                    <th>Delete</th>
                 </tr>
             </thead>
             <tbody>
@@ -231,14 +243,20 @@ $site_url = "https://glandular-barcode-kitten.ngrok-free.dev";
                         <td>{$row['roll_no']}</td>
                         <td>{$row['course']}</td>
                         <td>
-                                <a href='{$local_qr_path}' target='_blank'>
-                                    <img src='{$local_qr_path}' class='qr-thumb' alt='QR Code'>
-                                </a>
-                            </td>
-                            <td>
-                                <a href='view_profile.php?id={$encoded_id}' class='view-link'>View Profile</a>
-                            </td>
-                            </tr>";
+                            <a href='{$local_qr_path}' target='_blank'>
+                                <img src='{$local_qr_path}' class='qr-thumb' alt='QR Code'>
+                            </a>
+                        </td>
+                        <td>
+                            <a href='view_profile.php?id={$encoded_id}' class='view-link'>View Profile</a>
+                        </td>
+                        <td>
+                            <a href='attendance_dashboard.php?search=" . urlencode($row['unique_id']) . "' class='log-btn'>Status</a>
+                        </td>
+                        <td>
+                            <a href='delete_student.php?id=$encoded_id'class='view-btn delete-btn'onclick='return confirm(\"Are you sure? This will permanently delete the student and all their images (Photo, Sig, QR).\")'> Delete </a>
+                        </td>
+                        </tr>";
                     }
                 } else {
                     echo "<tr><td colspan='6' style='text-align:center; padding: 40px;'>No student records found.</td></tr>";
